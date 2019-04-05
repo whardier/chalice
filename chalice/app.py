@@ -281,6 +281,18 @@ class CORSConfig(object):
         return False
 
 
+class CacheConfig(object):
+    """A cache configuration to attach to a route."""
+
+    def __init__(self, view_args=None):
+        print(view_args)
+        pass
+
+    def set_default_view_args(self, default_view_args):
+        print('!!!', default_view_args)
+        pass
+
+
 class Request(object):
     """The current request from API gateway."""
 
@@ -390,7 +402,7 @@ class RouteEntry(object):
 
     def __init__(self, view_function, view_name, path, method,
                  api_key_required=None, content_types=None,
-                 cors=False, authorizer=None):
+                 cors=False, cache=False, authorizer=None):
         self.view_function = view_function
         self.view_name = view_name
         self.uri_pattern = path
@@ -410,6 +422,13 @@ class RouteEntry(object):
         elif cors is False:
             cors = None
         self.cors = cors
+        if cache is True:
+            cache = CacheConfig(view_args=self.view_args)
+        elif cache is False:
+            cache = None
+        else:
+            cache.set_default_view_args(self.view_args)
+        self.cache = cache
         self.authorizer = authorizer
 
     def _parse_view_args(self):
@@ -647,6 +666,7 @@ class _HandlerRegistration(object):
             'content_types': actual_kwargs.pop('content_types',
                                                ['application/json']),
             'cors': actual_kwargs.pop('cors', False),
+            'cache': actual_kwargs.pop('cache', False),
         }
         if not isinstance(route_kwargs['content_types'], list):
             raise ValueError(
@@ -884,6 +904,9 @@ class Chalice(_HandlerRegistration, DecoratorAPI):
         for name, value in cors_headers.items():
             if name not in response.headers:
                 response.headers[name] = value
+
+    def _cache_enabled_for_route(self, route_entry):
+        return route_entry.cache is not None
 
 
 class BuiltinAuthConfig(object):
